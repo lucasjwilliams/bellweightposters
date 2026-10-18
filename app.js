@@ -831,7 +831,7 @@ function posterPage(bells, first, startIndex = 0) {
             ${cols.map((c) => `<div class="${c.cls || ''}">${c.cell(b)}</div>`).join('')}
           </div>`).join('')}
       </div>
-      <p class="p-credit">Bell Weight Posters | Data: Dove's Guide</p>
+      <p class="p-credit">Bell Weight Posters | weights.lucasw.uk | Data: Dove's Guide</p>
     </div>`;
 }
 
