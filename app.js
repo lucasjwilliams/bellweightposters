@@ -2,6 +2,11 @@
 
 const CHANGELOG = [
   {
+    version: '0.9', date: '2026-10-21', changes: [
+      'Pictures show a little loading spinner until they arrive, instead of a blank gap',
+    ],
+  },
+  {
     version: '0.8', date: '2026-10-02', changes: [
       'Towers with chime bells, old bells or planned new bells (e.g. Manchester Town Hall) now name their bells properly and start with just the ringing bells ticked',
       'This list of changes',
@@ -467,12 +472,18 @@ function thumbSrc(item) {
 
 function itemThumb(item, cls = 'thumb') {
   return item.image
-    ? `<img class="${cls}" src="${escapeHtml(thumbSrc(item))}" alt="" loading="lazy">`
+    ? `<img class="${cls} loading" src="${escapeHtml(thumbSrc(item))}" alt="" loading="lazy" onload="this.classList.remove('loading')" onerror="this.classList.remove('loading')">`
     : `<span class="${cls}"></span>`;
 }
 
 const fullLoaded = new Set();
 const fullLoading = new Set();
+const thumbLoaded = new Set();
+const thumbLoading = new Set();
+
+function posterPictures(full) {
+  return [...document.querySelectorAll('.p-img[data-full]')].filter((el) => el.dataset.full === full);
+}
 
 function loadFullImage(src) {
   if (fullLoading.has(src)) return;
@@ -480,9 +491,22 @@ function loadFullImage(src) {
   const img = new Image();
   img.onload = () => {
     fullLoaded.add(src);
-    for (const el of document.querySelectorAll('.p-img[data-full]')) {
-      if (el.dataset.full === src) el.style.backgroundImage = `url('${src}')`;
+    for (const el of posterPictures(src)) {
+      el.style.backgroundImage = `url('${src}')`;
+      el.classList.remove('loading');
     }
+  };
+  img.src = src;
+}
+
+// The spinner stays until the small picture arrives
+function loadThumb(full, src) {
+  if (thumbLoading.has(src)) return;
+  thumbLoading.add(src);
+  const img = new Image();
+  img.onload = img.onerror = () => {
+    thumbLoaded.add(src);
+    for (const el of posterPictures(full)) el.classList.remove('loading');
   };
   img.src = src;
 }
@@ -492,7 +516,9 @@ function posterImage(item) {
   const ready = item.custom || fullLoaded.has(item.image);
   if (!ready) loadFullImage(item.image);
   const src = ready ? item.image : thumbSrc(item);
-  return `<div class="p-img" data-full="${escapeHtml(item.image)}" style="background-image:url('${escapeHtml(src)}')" role="img" aria-label="${escapeHtml(item.name)}"></div>`;
+  const shown = ready || thumbLoaded.has(src);
+  if (!shown) loadThumb(item.image, src);
+  return `<div class="p-img${shown ? '' : ' loading'}" data-full="${escapeHtml(item.image)}" style="background-image:url('${escapeHtml(src)}')" role="img" aria-label="${escapeHtml(item.name)}"></div>`;
 }
 
 function openPicker(bell) {
@@ -910,6 +936,7 @@ function swapInPictures(doc, pageIndex, pictures) {
   const els = doc.querySelectorAll('#posters .poster')[pageIndex].querySelectorAll('.p-img');
   els.forEach((el, i) => {
     const { src, w, h } = pictures[i];
+    el.classList.remove('loading');
     Object.assign(el.style, { backgroundImage: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' });
     const img = doc.createElement('img');
     img.src = src;
